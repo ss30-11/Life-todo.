@@ -3,546 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life. - TODO & Timer</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3B82F6">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Life.">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide-react/0.263.1/lucide-react.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #EBF4FF 0%, #E0E7FF 100%);
-            min-height: 100vh;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-        
-        /* PWA用のスタイル調整 */
-        .app-container {
-            max-width: 100%;
-            min-height: 100vh;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
-        
-        /* タッチ操作の改善 */
-        button {
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        /* スクロール改善 */
-        .scroll-container {
-            -webkit-overflow-scrolling: touch;
-        }
-    </style>
+    <title>Life. - タイマー付きTODOアプリ</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const { Play, Pause, Square, Clock, Plus, Check, X, History, MessageCircle, Trash2 } = lucide;
+    <div class="app-container">
+        <div class="app-card">
+            <h1 class="app-title">Life.</h1>
 
-        const TodoApp = () => {
-            const [todos, setTodos] = useState(() => {
-                const saved = localStorage.getItem('todos');
-                return saved ? JSON.parse(saved) : [];
-            });
-            const [history, setHistory] = useState(() => {
-                const saved = localStorage.getItem('history');
-                return saved ? JSON.parse(saved) : [];
-            });
-            const [newTodo, setNewTodo] = useState('');
-            const [activeTab, setActiveTab] = useState('todos');
-            const [timers, setTimers] = useState(() => {
-                const saved = localStorage.getItem('timers');
-                return saved ? JSON.parse(saved) : {};
-            });
-            const [feedback, setFeedback] = useState({});
-            const [showFeedback, setShowFeedback] = useState(null);
-            const [currentDate, setCurrentDate] = useState(new Date().toDateString());
-            const [selectedHistoryItems, setSelectedHistoryItems] = useState([]);
-            const [isSelectMode, setIsSelectMode] = useState(false);
-            const intervalRefs = useRef({});
+            <!-- タブナビゲーション -->
+            <div class="tab-nav">
+                <button id="todos-tab" class="tab-button active">
+                    現在のTODO
+                </button>
+                <button id="history-tab" class="tab-button">
+                    履歴
+                </button>
+            </div>
 
-            // データの保存
-            useEffect(() => {
-                localStorage.setItem('todos', JSON.stringify(todos));
-            }, [todos]);
+            <!-- TODOタブ -->
+            <div id="todos-content" class="tab-content active">
+                <!-- TODO追加フォーム -->
+                <div class="todo-form">
+                    <input type="text" id="new-todo" placeholder="新しいTODOを入力..." />
+                    <button id="add-todo" class="add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
 
-            useEffect(() => {
-                localStorage.setItem('history', JSON.stringify(history));
-            }, [history]);
-
-            useEffect(() => {
-                localStorage.setItem('timers', JSON.stringify(timers));
-            }, [timers]);
-
-            // 日付変更をチェック
-            useEffect(() => {
-                const checkDateChange = () => {
-                    const newDate = new Date().toDateString();
-                    if (newDate !== currentDate) {
-                        const incompleteTodos = todos.filter(todo => !todo.completed);
-                        if (incompleteTodos.length > 0) {
-                            const movedTodos = incompleteTodos.map(todo => ({
-                                ...todo,
-                                status: 'incomplete',
-                                completedAt: currentDate,
-                                totalTime: timers[todo.id] || 0
-                            }));
-                            setHistory(prev => [...movedTodos, ...prev]);
-                            setTodos(prev => prev.filter(todo => todo.completed));
-                        }
-                        setCurrentDate(newDate);
-                    }
-                };
-
-                const interval = setInterval(checkDateChange, 60000);
-                return () => clearInterval(interval);
-            }, [currentDate, todos, timers]);
-
-            // タイマー機能
-            const startTimer = (todoId) => {
-                if (intervalRefs.current[todoId]) return;
-                
-                intervalRefs.current[todoId] = setInterval(() => {
-                    setTimers(prev => ({
-                        ...prev,
-                        [todoId]: (prev[todoId] || 0) + 1
-                    }));
-                }, 1000);
-            };
-
-            const pauseTimer = (todoId) => {
-                if (intervalRefs.current[todoId]) {
-                    clearInterval(intervalRefs.current[todoId]);
-                    delete intervalRefs.current[todoId];
-                }
-            };
-
-            const resetTimer = (todoId) => {
-                pauseTimer(todoId);
-                setTimers(prev => ({
-                    ...prev,
-                    [todoId]: 0
-                }));
-            };
-
-            // TODO追加
-            const addTodo = () => {
-                if (newTodo.trim()) {
-                    const todo = {
-                        id: Date.now(),
-                        text: newTodo,
-                        completed: false,
-                        createdAt: new Date().toISOString(),
-                        isRunning: false
-                    };
-                    setTodos(prev => [...prev, todo]);
-                    setNewTodo('');
-                    setTimers(prev => ({ ...prev, [todo.id]: 0 }));
-                }
-            };
-
-            // TODO完了
-            const completeTodo = (todoId) => {
-                setShowFeedback(todoId);
-            };
-
-            // フィードバック送信
-            const submitFeedback = (todoId, feedbackText) => {
-                const todo = todos.find(t => t.id === todoId);
-                if (todo) {
-                    pauseTimer(todoId);
-                    const completedTodo = {
-                        ...todo,
-                        completed: true,
-                        completedAt: new Date().toISOString(),
-                        totalTime: timers[todoId] || 0,
-                        feedback: feedbackText,
-                        status: 'completed'
-                    };
-                    setHistory(prev => [completedTodo, ...prev]);
-                    setTodos(prev => prev.filter(t => t.id !== todoId));
-                    setShowFeedback(null);
-                    setFeedback(prev => ({ ...prev, [todoId]: '' }));
-                }
-            };
-
-            // TODO削除
-            const deleteTodo = (todoId) => {
-                pauseTimer(todoId);
-                setTodos(prev => prev.filter(t => t.id !== todoId));
-                setTimers(prev => {
-                    const newTimers = { ...prev };
-                    delete newTimers[todoId];
-                    return newTimers;
-                });
-            };
-
-            // 履歴選択機能
-            const toggleSelectMode = () => {
-                setIsSelectMode(!isSelectMode);
-                setSelectedHistoryItems([]);
-            };
-
-            const toggleHistorySelection = (historyId) => {
-                setSelectedHistoryItems(prev => 
-                    prev.includes(historyId)
-                        ? prev.filter(id => id !== historyId)
-                        : [...prev, historyId]
-                );
-            };
-
-            const selectAllHistory = () => {
-                if (selectedHistoryItems.length === history.length) {
-                    setSelectedHistoryItems([]);
-                } else {
-                    setSelectedHistoryItems(history.map(item => item.id));
-                }
-            };
-
-            const deleteSelectedHistory = () => {
-                setHistory(prev => prev.filter(item => !selectedHistoryItems.includes(item.id)));
-                setSelectedHistoryItems([]);
-                setIsSelectMode(false);
-            };
-
-            // 単一履歴削除
-            const deleteHistoryItem = (historyId) => {
-                setHistory(prev => prev.filter(item => item.id !== historyId));
-            };
-
-            // タイマー表示用フォーマット
-            const formatTime = (seconds) => {
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                const secs = seconds % 60;
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            };
-
-            // タイマー状態の切り替え
-            const toggleTimer = (todoId) => {
-                const todo = todos.find(t => t.id === todoId);
-                if (todo.isRunning) {
-                    pauseTimer(todoId);
-                } else {
-                    startTimer(todoId);
-                }
-                setTodos(prev => prev.map(t => 
-                    t.id === todoId ? { ...t, isRunning: !t.isRunning } : t
-                ));
-            };
-
-            return (
-                <div className="app-container">
-                    <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-                                Life.
-                            </h1>
-
-                            {/* タブナビゲーション */}
-                            <div className="flex mb-6 border-b">
-                                <button
-                                    onClick={() => setActiveTab('todos')}
-                                    className={`px-4 py-2 font-medium ${
-                                        activeTab === 'todos'
-                                            ? 'text-blue-600 border-b-2 border-blue-600'
-                                            : 'text-gray-600 hover:text-blue-600'
-                                    }`}
-                                >
-                                    現在のTODO
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('history')}
-                                    className={`px-4 py-2 font-medium ${
-                                        activeTab === 'history'
-                                            ? 'text-blue-600 border-b-2 border-blue-600'
-                                            : 'text-gray-600 hover:text-blue-600'
-                                    }`}
-                                >
-                                    履歴
-                                </button>
-                            </div>
-
-                            {activeTab === 'todos' && (
-                                <div>
-                                    {/* TODO追加 */}
-                                    <div className="flex mb-6">
-                                        <input
-                                            type="text"
-                                            value={newTodo}
-                                            onChange={(e) => setNewTodo(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && addTodo()}
-                                            placeholder="新しいTODOを入力..."
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <button
-                                            onClick={addTodo}
-                                            className="px-6 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors"
-                                        >
-                                            <Plus size={20} />
-                                        </button>
-                                    </div>
-
-                                    {/* TODOリスト */}
-                                    <div className="space-y-4 scroll-container">
-                                        {todos.map((todo) => (
-                                            <div key={todo.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-lg font-medium text-gray-800">{todo.text}</span>
-                                                    <div className="flex items-center space-x-2">
-                                                        <button
-                                                            onClick={() => toggleTimer(todo.id)}
-                                                            className={`p-2 rounded-full ${
-                                                                todo.isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
-                                                            } text-white transition-colors`}
-                                                        >
-                                                            {todo.isRunning ? <Pause size={16} /> : <Play size={16} />}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => resetTimer(todo.id)}
-                                                            className="p-2 rounded-full bg-gray-500 hover:bg-gray-600 text-white transition-colors"
-                                                        >
-                                                            <Square size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => completeTodo(todo.id)}
-                                                            className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                                                        >
-                                                            <Check size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => deleteTodo(todo.id)}
-                                                            className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
-                                                        >
-                                                            <X size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center text-gray-600">
-                                                    <Clock size={16} className="mr-1" />
-                                                    <span className="text-lg font-mono">{formatTime(timers[todo.id] || 0)}</span>
-                                                    {todo.isRunning && (
-                                                        <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                                            実行中
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {todos.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500">
-                                            TODOがありません。新しいTODOを追加してください。
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === 'history' && (
-                                <div>
-                                    {/* 履歴操作ボタン */}
-                                    {history.length > 0 && (
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={toggleSelectMode}
-                                                    className={`px-4 py-2 rounded-lg transition-colors ${
-                                                        isSelectMode 
-                                                            ? 'bg-red-500 text-white hover:bg-red-600' 
-                                                            : 'bg-gray-500 text-white hover:bg-gray-600'
-                                                    }`}
-                                                >
-                                                    {isSelectMode ? 'キャンセル' : '選択削除'}
-                                                </button>
-                                                {isSelectMode && (
-                                                    <>
-                                                        <button
-                                                            onClick={selectAllHistory}
-                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                                                        >
-                                                            {selectedHistoryItems.length === history.length ? '全て解除' : '全て選択'}
-                                                        </button>
-                                                        <button
-                                                            onClick={deleteSelectedHistory}
-                                                            disabled={selectedHistoryItems.length === 0}
-                                                            className={`px-4 py-2 rounded-lg transition-colors ${
-                                                                selectedHistoryItems.length === 0
-                                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                                    : 'bg-red-500 text-white hover:bg-red-600'
-                                                            }`}
-                                                        >
-                                                            削除 ({selectedHistoryItems.length})
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* 日付ごとの履歴リスト */}
-                                    <div className="space-y-6 scroll-container">
-                                        {Object.entries(
-                                            history.reduce((acc, item) => {
-                                                const date = new Date(item.completedAt).toLocaleDateString('ja-JP', {
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric',
-                                                    weekday: 'long'
-                                                });
-                                                if (!acc[date]) acc[date] = [];
-                                                acc[date].push(item);
-                                                return acc;
-                                            }, {})
-                                        ).map(([date, items]) => (
-                                            <div key={date} className="mb-6">
-                                                {/* 日付ヘッダー */}
-                                                <div className="flex items-center mb-3">
-                                                    <div className="h-px bg-gray-300 flex-1"></div>
-                                                    <h3 className="px-4 text-lg font-semibold text-gray-700 bg-white">
-                                                        {date}
-                                                    </h3>
-                                                    <div className="h-px bg-gray-300 flex-1"></div>
-                                                </div>
-                                                
-                                                {/* その日の履歴アイテム */}
-                                                <div className="space-y-3">
-                                                    {items.map((item) => (
-                                                        <div 
-                                                            key={item.id} 
-                                                            className={`bg-gray-50 rounded-lg p-4 border transition-colors ${
-                                                                isSelectMode 
-                                                                    ? selectedHistoryItems.includes(item.id)
-                                                                        ? 'border-blue-500 bg-blue-50'
-                                                                        : 'border-gray-200 hover:border-gray-300 cursor-pointer'
-                                                                    : 'border-gray-200'
-                                                            }`}
-                                                            onClick={() => isSelectMode && toggleHistorySelection(item.id)}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-2">
-                                                                <div className="flex items-center">
-                                                                    {isSelectMode && (
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={selectedHistoryItems.includes(item.id)}
-                                                                            onChange={() => toggleHistorySelection(item.id)}
-                                                                            className="mr-3 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                                        />
-                                                                    )}
-                                                                    <span className="text-lg font-medium text-gray-800">{item.text}</span>
-                                                                </div>
-                                                                <div className="flex items-center space-x-2">
-                                                                    <span className={`px-3 py-1 rounded-full text-sm ${
-                                                                        item.status === 'completed' 
-                                                                            ? 'bg-green-100 text-green-800' 
-                                                                            : 'bg-yellow-100 text-yellow-800'
-                                                                    }`}>
-                                                                        {item.status === 'completed' ? '完了' : '未完了'}
-                                                                    </span>
-                                                                    {!isSelectMode && (
-                                                                        <button
-                                                                            onClick={() => deleteHistoryItem(item.id)}
-                                                                            className="p-1 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
-                                                                        >
-                                                                            <Trash2 size={14} />
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center text-gray-600 mb-2">
-                                                                <Clock size={16} className="mr-1" />
-                                                                <span className="text-sm font-mono">{formatTime(item.totalTime)}</span>
-                                                                <span className="ml-4 text-sm">
-                                                                    {item.status === 'completed' ? '完了時刻' : '移動時刻'}: {new Date(item.completedAt).toLocaleTimeString('ja-JP')}
-                                                                </span>
-                                                            </div>
-                                                            {item.feedback && (
-                                                                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
-                                                                    <div className="flex items-start">
-                                                                        <MessageCircle size={16} className="text-blue-600 mr-2 mt-0.5" />
-                                                                        <span className="text-sm text-blue-800">{item.feedback}</span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    
-                                    {history.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500">
-                                            履歴がありません。
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* フィードバックモーダル */}
-                        {showFeedback && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                                <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                                    <h3 className="text-xl font-bold mb-4">TODOの完了</h3>
-                                    <p className="text-gray-600 mb-4">
-                                        このTODOについてフィードバックを入力してください（任意）
-                                    </p>
-                                    <textarea
-                                        value={feedback[showFeedback] || ''}
-                                        onChange={(e) => setFeedback(prev => ({ ...prev, [showFeedback]: e.target.value }))}
-                                        placeholder="学んだことや改善点を入力..."
-                                        className="w-full p-3 border border-gray-300 rounded-lg resize-none h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <div className="flex justify-end space-x-3 mt-4">
-                                        <button
-                                            onClick={() => setShowFeedback(null)}
-                                            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                                        >
-                                            キャンセル
-                                        </button>
-                                        <button
-                                            onClick={() => submitFeedback(showFeedback, feedback[showFeedback] || '')}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                        >
-                                            完了
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                <!-- TODOリスト -->
+                <div id="todos-list" class="todos-list">
+                    <div class="empty-state">
+                        TODOがありません。新しいTODOを追加してください。
                     </div>
                 </div>
-            );
-        };
+            </div>
 
-        ReactDOM.render(<TodoApp />, document.getElementById('root'));
-    </script>
-    
-    <script>
-        // Service Worker登録
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('SW registered: ', registration);
-                    })
-                    .catch(registrationError => {
-                        console.log('SW registration failed: ', registrationError);
-                    });
-            });
-        }
-    </script>
+            <!-- 履歴タブ -->
+            <div id="history-content" class="tab-content">
+                <!-- 履歴操作ボタン -->
+                <div id="history-controls" class="history-controls hidden">
+                    <div class="controls-group">
+                        <button id="select-mode-toggle" class="control-button">
+                            選択削除
+                        </button>
+                        <div id="select-mode-buttons" class="select-mode-buttons hidden">
+                            <button id="select-all-history" class="control-button select-all">
+                                全て選択
+                            </button>
+                            <button id="delete-selected-history" class="control-button delete-selected" disabled>
+                                削除 (0)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 履歴リスト -->
+                <div id="history-list" class="history-list">
+                    <div class="empty-state">
+                        履歴がありません。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フィードバックモーダル -->
+    <div id="feedback-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>TODOの完了</h3>
+            <p>このTODOについてフィードバックを入力してください（任意）</p>
+            <textarea id="feedback-textarea" placeholder="学んだことや改善点を入力..."></textarea>
+            <div class="modal-buttons">
+                <button id="feedback-cancel" class="modal-button cancel">キャンセル</button>
+                <button id="feedback-submit" class="modal-button submit">完了</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
